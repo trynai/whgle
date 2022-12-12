@@ -34,8 +34,7 @@ SITE_ALTS = {
     'instagram.com': os.getenv('WHOOGLE_ALT_IG', 'farside.link/bibliogram/u'),
     'reddit.com': os.getenv('WHOOGLE_ALT_RD', 'farside.link/libreddit'),
     **dict.fromkeys([
-        '.medium.com',
-        '//medium.com',
+        'medium.com',
         'levelup.gitconnected.com'
     ], os.getenv('WHOOGLE_ALT_MD', 'farside.link/scribe')),
     'imgur.com': os.getenv('WHOOGLE_ALT_IMG', 'farside.link/rimgo'),
@@ -135,7 +134,12 @@ def get_site_alt(link: str) -> str:
     # Need to replace full hostname with alternative to encapsulate
     # subdomains as well
     parsed_link = urlparse.urlparse(link)
-    hostname = parsed_link.hostname
+
+    # Extract subdomain separately from the domain+tld. The subdomain
+    # is used for wikiless translations.
+    split_host = parsed_link.netloc.split('.')
+    subdomain = split_host[0] if len(split_host) > 2 else ''
+    hostname = '.'.join(split_host[-2:])
 
     # The full scheme + hostname is used when comparing against the list of
     # available alternative services, due to how Medium links are constructed.
@@ -144,17 +148,17 @@ def get_site_alt(link: str) -> str:
     hostcomp = f'{parsed_link.scheme}://{hostname}'
 
     for site_key in SITE_ALTS.keys():
-        if not hostname or site_key not in hostname or not SITE_ALTS[site_key]:
+        site_alt = f'{parsed_link.scheme}://{site_key}'
+        if not hostname or site_alt not in hostcomp or not SITE_ALTS[site_key]:
             continue
 
         # Wikipedia -> Wikiless replacements require the subdomain (if it's
         # a 2-char language code) to be passed as a URL param to Wikiless
         # in order to preserve the language setting.
         params = ''
-        if 'wikipedia' in hostname:
-            subdomain = hostname.split('.')[0]
-            if len(subdomain) == 2:
-                params = f'?lang={subdomain}'
+        if 'wikipedia' in hostname and len(subdomain) == 2:
+            hostname = f'{subdomain}.{hostname}'
+            params = f'?lang={subdomain}'
 
         parsed_alt = urlparse.urlparse(SITE_ALTS[site_key])
         link = link.replace(hostname, SITE_ALTS[site_key]) + params
