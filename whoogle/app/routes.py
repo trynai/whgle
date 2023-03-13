@@ -251,8 +251,7 @@ def opensearch():
         main_url=opensearch_url,
         request_type='' if get_only else 'method="post"',
         search_type=request.args.get('tbm'),
-        search_name=get_search_name(request.args.get('tbm')),
-        preferences=g.user_config.preferences
+        search_name=get_search_name(request.args.get('tbm'))
     ), 200, {'Content-Type': 'application/xml'}
 
 
@@ -556,6 +555,11 @@ def window():
             g.user_config.get_localization_lang()
         ]
     )
+
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('error.html', error_message=str(e)), 404
 
 
 def run_app() -> None:
